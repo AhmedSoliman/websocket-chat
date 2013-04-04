@@ -1,0 +1,43 @@
+@(rooms: Seq[String])(implicit flash: Flash)
+
+@main(Some("Home"), None) {
+    
+    @flash.get("error").map { errorMessage =>
+        
+        <div class="alert-message error">
+            <p>
+                <strong>Oops!</strong> @errorMessage
+            </p>
+        </div>
+        
+    }
+        
+    <div>
+        <p>
+            <strong>This is the Play 2.0 Websocket sample application!</strong> 
+            To start, choose a username and sign in using the top right form.
+        </p>
+
+        <form id="newroomform" action="@routes.Application.chatRoom()" class="form-horizontal">
+            <fieldset>
+                <legend>Join a Chat Room</legend>
+                <label>Username</label>
+                <input id="username" name="username" type="text" placeholder="Username" />
+                <select name="room">
+                    @rooms.map { room =>
+                      <option>@room</option>
+                    }
+                </select>
+                <label>New Room?</label> <input type="text" size="40" name="room" />
+                <button class="btn" type="submit">Sign in</button>
+            </fieldset>
+        </form>
+    </div>
+    <script>
+      $(function() {
+        //nothing
+      });
+    </script>
+
+    
+}
