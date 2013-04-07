@@ -1,0 +1,96 @@
+// Messages from client to server
+// Join Room  >> notifyJoin, roomMembers
+{
+	"kind": "join",
+	"id": "1fca2343453985",
+	"object": {
+		"room": "cloud9ers"
+	}
+}
+
+// Send Message  >> message
+{
+	"kind": "sendMessage",
+	"id": "1fca2343453985",
+	"object": {
+		"room": "cloud9ers",
+		"body": "hi"
+	}
+}
+
+// Create New Room
+{
+	"kind": "createRoom",
+	"id": "1fca2343453986",
+	"object": {
+		"roomname": "cloud9ers",
+		"public": true  // ??
+	}
+}
+
+// Messages from server to client
+// Notify New Room
+{
+	"kind": "newRoom",
+	"object": {
+		"roomname": "cloud9ers",
+		"username": "Ahmed"
+	}
+}
+
+// Notify Join Room
+{
+	"kind": "notifyJoin",
+	"object": {
+		"room": "cloud9ers",
+		"user": {
+			"username": "mohamed",
+			"email": "mohamed@gmail.com"
+		}
+	}
+}
+
+// Notify Message
+{
+	"kind": "message",
+	"object": {
+		"username": "Ihab",
+		"room": "cloud9ers",
+		"body": "hi all"
+	}
+}
+
+// Get Room List
+// .. request
+{
+	"kind": "getRoomList"
+}
+// .. response
+{
+	"kind": "roomList",
+	"object": {
+		"roomList": ["cloud9ers", "c9"]
+	}
+}
+
+// Get Room Members
+// .. request
+{
+	"kind": "getRoomMembers",
+	"object": {
+		"room": "cloud9ers"
+	}
+}
+// .. response
+{
+	"knid": "roomMembers",
+	"object": {
+		"roomname": "cloud9ers",
+		"roomList": [
+			{
+				"usename": "keladawy",
+				"email": "keladawy@gmail.com"
+			}
+		]
+	}
+}
