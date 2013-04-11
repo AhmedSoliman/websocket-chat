@@ -4,7 +4,6 @@ import play.api._
 import play.api.mvc._
 import play.api.libs.json._
 import play.api.libs.iteratee._
-import models._
 import akka.actor._
 import scala.concurrent.duration._
 import scala.concurrent._
@@ -17,10 +16,13 @@ import actors.UserManager
 import akka.util.Timeout
 import play.api.data._
 import play.api.data.Forms._
+import models.UserActorProtocol
+import actors.RoomManager
 
 object Application extends Controller {
   private[this] implicit val timeout = Timeout(1 seconds)
   val userManager: ActorRef = Akka.system.actorOf(Props[UserManager], name = "users")
+  val roomsManager: ActorRef = Akka.system.actorOf(Props[RoomManager], name = "rooms")
   /**
    * Just display the home page.
    */
@@ -69,8 +71,12 @@ object Application extends Controller {
     implicit request =>
       //check if logged in
       request.session.get("username").map { username =>
+        Logger.info(s"WS CONNECTED <$username>")
         (userManager ? CreateUser(username, request.session("email"))).map {
-          case e: Tuple2[Iteratee[JsValue, _], Enumerator[JsValue]] => (e._1, e._2)
+          case UserActorProtocol.UserWSPair(in, out) =>
+            (in, out)
+          case e => 
+            throw new Exception("WTF!")
         }
 
       }.getOrElse {

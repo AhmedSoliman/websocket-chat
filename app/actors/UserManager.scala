@@ -14,8 +14,11 @@ import models.User
 import models.Protocol
 import play.api.libs.concurrent.Execution.Implicits._
 import models.UserActorProtocol._
+import models.RoomActorProtocol
 
 class UserManager extends Actor with ActorLogging {
+  log.info("UserManager Created:" + this.self.path)
+  
   private[this] implicit val timeout = Timeout(1 second)
   //who is now online
   private[this] var onlineUsers: Map[String, User] = Map.empty
@@ -33,7 +36,13 @@ class UserManager extends Actor with ActorLogging {
       //new iteratee for every connection even to the same user
       val iteratee = Protocol.createUserIteratee(user)
       //return enumerator from the user actor
-      (user.actor ? Connect).map { case Connected(enumerator) => sender ! (iteratee -> enumerator) }
+      val tender = sender
+      (user.actor ? Connect).map { 
+        case Connected(enumerator) =>
+          val s = UserWSPair(iteratee, enumerator)
+          tender ! s
+          s
+        }
     case e @ KickUser(username: String) =>
       if (onlineUsers contains username) {
         val user = onlineUsers(username)
@@ -51,6 +60,7 @@ class UserManager extends Actor with ActorLogging {
 }
 
 class UserActor(username: String) extends Actor with ActorLogging {
+  log.info("UserActor Started:" + this.self.path)
   private[this] val (enumerator, channel) = Concurrent.broadcast[JsValue]
   def receive = {
     case Connect =>
@@ -58,7 +68,8 @@ class UserActor(username: String) extends Actor with ActorLogging {
       
     case message: SendRoomMessage => 
       channel.push(Protocol.formatRoomMessage(message))
-      
+    case message: RoomActorProtocol.RoomMembersList =>
+      channel.push(Protocol.formatRoomMembersList(message))
     case KickUser(_) =>
       //broadcast to all rooms (actors) to kick this user out
       channel.push(Protocol.formatKickMessage(username))

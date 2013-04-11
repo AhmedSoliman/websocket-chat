@@ -17,16 +17,18 @@ import models.RoomActorProtocol._
 import models.UserActorProtocol
 
 class RoomManager extends Actor with ActorLogging {
+  log.info("RoomManager Created:" + this.self.path)
   private[this] implicit val timeout = Timeout(1 seconds)
   private[this] var rooms: Map[String, Room] = Map.empty
   def receive = {
     case CreateRoom(room, owner) =>
+      log.info(s"Creating room $room for owner $owner")
       if (rooms contains room) {
-        sender ! RoomAlreadyExists
+        owner.actor ! RoomAlreadyExists(room)
       } else {
         val roomObj = Room(room, owner, context.actorOf(Props(new RoomActor(room, owner)), name = s"room:$room"))
         rooms += (room -> roomObj)
-        sender ! RoomCreated
+        roomObj.actor ! SendMembersList(room, owner)
       }
 
     case e @ JoinRoom(room, user) =>
@@ -45,9 +47,11 @@ class RoomManager extends Actor with ActorLogging {
   }
 }
 
-class RoomActor(name: String, ownerUsername: String) extends Actor with ActorLogging {
+class RoomActor(name: String, owner: User) extends Actor with ActorLogging {
+  log.info("RoomActor Started:" + this.self.path)
+  
   private[this] implicit val timeout = Timeout(1 seconds)
-  private[this] var members: Set[User] = Set.empty
+  private[this] var members: Set[User] = Set(owner)
 
   private def sendToAll(message: AnyRef): Unit = {
     members.foreach(_.actor ! message)
@@ -61,6 +65,7 @@ class RoomActor(name: String, ownerUsername: String) extends Actor with ActorLog
         sendToAll(UserActorProtocol.NotifyRoomJoin(name, user, true)) //notify everybody
         user.actor ! RoomMembersList(name, members) //return user list
       }
+    case SendMembersList(_, user) => user.actor ! RoomMembersList(name, members)
     case Talk(who, _, body) =>
     	sendToAll(UserActorProtocol.SendRoomMessage(who, name, body))
     case SendMembersList(room, user) => ???
