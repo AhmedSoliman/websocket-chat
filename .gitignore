@@ -18,3 +18,7 @@ eclipse
 server.pid
 public/uploads
 dist
+
+*.sublime-project
+
+*.sublime-workspace
