@@ -26,6 +26,7 @@ createRoomMsg =
 
 
 # Messages from server to client
+
 # Notify New Room
 newRoomMsg =
   kind: "newRoom"
@@ -49,7 +50,9 @@ notifyLeaveMsg =
   kind: "notifyLeave"
   object:
     room: "cloud9ers"
-    username: "mohamed"
+    user:
+      username: "mohamed"
+      email: "mohamed@gmail.com"
 
 
 # Notify Message
