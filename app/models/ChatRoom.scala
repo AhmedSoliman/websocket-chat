@@ -11,6 +11,7 @@ import akka.pattern.ask
 import play.api.Play.current
 import play.api.libs.concurrent.Execution.Implicits._
 import scala.concurrent.Future
+import scala.collection.mutable.{ Map => MutableMap }
 
 //object Robot {
 //
@@ -36,17 +37,38 @@ import scala.concurrent.Future
 //  }
 //
 //}
-class Room(val name: String) {
+class Room(val name: String) { // change the class name
   lazy val roomActor = Akka.system.actorOf(Props[RoomActor], name = name)
   private[this] implicit val timeout = Timeout(1 second)
 
-  def join(username: String): Future[(Iteratee[JsValue, _], Enumerator[JsValue])] = {
-	lazy val (userEnumerator, userChannel) = Concurrent.broadcast[JsValue]
-    (roomActor ? Join(username, userChannel)).map {
+  def join(username: String, email: String): Future[(Iteratee[JsValue, _], Enumerator[JsValue])] = {
+    lazy val (userEnumerator, userChannel) = Concurrent.broadcast[JsValue]
+    (roomActor ? Join(username, email, userChannel)).map {
       case Connected() =>
         // Create an Iteratee to consume the feed
         val iteratee = Iteratee.foreach[JsValue] { event =>
-          roomActor ! Talk(username, (event \ "text").as[String])
+          println(s"msg rcv: $event")
+          val eventObject = (event \ "object")
+          (event \ "kind").as[String] match { // handle the general events
+            case "join" => {
+              println(s"kind: join, object: $eventObject")
+              roomActor ! Join(username, email, userChannel)
+            }
+            case "createRoom" => {
+              println(s"knid: createRoom, object: $eventObject")
+              Lobby.createRoom((event \ "object" \ "roomname").as[String]) //TODO: handle public?
+            }
+            case "getRoomList" => {
+              println(s"knid: getRoomList, object: $eventObject")
+              val responseObject = JsObject(Seq("roomList" -> Json.toJson(Lobby.rooms)))
+              val msg = JsObject(
+                Seq(
+                  "kind" -> JsString("roomList"),
+                  "object" -> responseObject))
+              userChannel push msg
+            }
+            case roomEventKind => roomActor ! RoomEvent(username, roomEventKind, (event \ "object"))
+          }
         }.mapDone { _ =>
           roomActor ! Quit(username)
         }
@@ -61,13 +83,13 @@ class Room(val name: String) {
         (iteratee, errorEnumerator) //return value
     }
   }
-  def members(): Future[Set[String]] =
+  def members(): Future[MutableMap[String, String]] =
     (roomActor ? GetMembers()).map {
       case Members(members) => members
     }
 }
 
-object Lobby {
+object Lobby { // Merge into the RoomClass
   import scala.collection.mutable
   private val roomsMap: mutable.Map[String, Room] = mutable.Map.empty
 
@@ -85,54 +107,81 @@ object Lobby {
 }
 
 class RoomActor extends Actor with ActorLogging {
-  var members: Set[String] = Set.empty
-  import scala.collection.mutable.{ Map => MutableMap }
+
+  val members: MutableMap[String, String] = MutableMap.empty
   val usersChannels: MutableMap[String, Concurrent.Channel[JsValue]] = MutableMap.empty
 
   def receive = {
-    case Join(username, userChannel) => {
+    case Join(username, email, userChannel) => {
       if (members.contains(username)) {
         sender ! CannotConnect("This username is already used")
       } else {
-        members += username
+        members put (username, email)
         usersChannels put (username, userChannel)
         sender ! Connected()
-        self ! NotifyJoin(username)
+        self ! NotifyJoin(username, email)
       }
     }
 
-    case NotifyJoin(username) => {
-      notifyAll("join", username, "has entered the room")
+    case NotifyJoin(username, email) => {
+      val jsonObject =
+        JsObject(Seq(
+          "room" -> JsString("room1"), //TODO: get the roomname 
+          "user" -> JsObject(Seq(
+            "username" -> JsString(username),
+            "email" -> JsString(email)))))
+      notifyAll("notifyJoin", jsonObject)
     }
-
-    case Talk(username, text) => {
-      notifyAll("talk", username, text)
-    }
+    case RoomEvent(username, kind, eventObject) => // handle room events
+      kind match {
+        case "sendMessage" => {
+          println(s"knid: sendMessage, object: $eventObject")
+          val jsonObject =
+            JsObject(Seq(
+              "username" -> JsString(username),
+              "room" -> eventObject \ "room",
+              "body" -> eventObject \ "body"))
+          notifyAll("message", jsonObject)
+        }
+        case "getRoomMembers" => {
+          println(s"knid: getRoomMembers, object: $eventObject")
+          val jsonObject = JsObject(Seq(
+            "roomname" -> JsString("room1"), //TODO: get the roomname
+            "membersList" -> Json.toJson(members.foldLeft(
+              List[Map[String, String]]())(
+                (acc, elem) => acc :+ Map("username" -> elem._1, "email" -> elem._2)))))
+          notifyAll("roomMembers", jsonObject)
+        }
+        case _ => {
+          println(s"knid: UNKNOWN, object: $eventObject")
+        }
+      }
 
     case Quit(username) => {
-      members = members - username
-      notifyAll("quit", username, "has left the room")
+      members remove username
+      val jsonObject = Json.toJson(Map(
+        "room" -> "blablabla2", //TODO: get the roomname
+        "username" -> username))
+      notifyAll("notifyLeave", jsonObject)
     }
     case GetMembers() =>
       sender ! Members(members)
   }
-  private[this] def notifyAll(kind: String, user: String, text: String) {
+  private[this] def notifyAll(kind: String, responseObject: JsValue) { //TODO: generalize
     val msg = JsObject(
       Seq(
         "kind" -> JsString(kind),
-        "user" -> JsString(user),
-        "message" -> JsString(text),
-        "members" -> JsArray(
-          members.toList.map(JsString))))
+        "object" -> responseObject))
+    println(s"send -> : $msg")
     usersChannels foreach { case (k, channel) => channel push msg }
   }
 }
 
-case class Join(username: String, userChannel: Concurrent.Channel[JsValue])
+case class RoomEvent(username: String, kind: String, eventObject: JsValue)
+case class Join(username: String, email: String, userChannel: Concurrent.Channel[JsValue])
 case class Quit(username: String)
-case class Talk(source: String, text: String)
-case class NotifyJoin(username: String)
+case class NotifyJoin(username: String, email: String)
 case class GetMembers()
-case class Members(members: Set[String])
+case class Members(members: MutableMap[String, String])
 case class Connected()
 case class CannotConnect(msg: String)

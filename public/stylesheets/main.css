@@ -43,6 +43,7 @@ body {
     padding-left: 9px;
     margin-left: 10px;
     border-left: 1px solid #eee;
+    width: 100px;
 }
 
 .topbar .btn {
@@ -54,7 +55,7 @@ body {
 }
 
 #username {
-    width: 200px;
+    width: 100px;
 }
 
 #main {

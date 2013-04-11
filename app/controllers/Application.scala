@@ -40,9 +40,9 @@ object Application extends Controller {
   /**
    * Handles the chat websocket.
    */
-  def ws(room: String, username: String) = WebSocket.async[JsValue] {
+  def ws(room: String, username: String, email: String) = WebSocket.async[JsValue] {
     implicit request =>
-      Lobby.createRoom(room).join(username)
+      Lobby.createRoom(room).join(username, email)
   }
 
 }

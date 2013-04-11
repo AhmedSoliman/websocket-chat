@@ -50,6 +50,15 @@
 	}
 }
 
+// Notify Leave Room
+{
+	"kind": "notifyLeave",
+	"object": {
+		"room": "cloud9ers",
+		"username": "mohamed"
+	}
+}
+
 // Notify Message
 {
 	"kind": "message",
@@ -86,7 +95,7 @@
 	"knid": "roomMembers",
 	"object": {
 		"roomname": "cloud9ers",
-		"roomList": [
+		"membersList": [
 			{
 				"usename": "keladawy",
 				"email": "keladawy@gmail.com"
