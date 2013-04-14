@@ -5,6 +5,7 @@ import play.api.libs.json._
 import akka.actor._
 import play.api.libs.concurrent.Akka
 import play.api.Play.current
+import play.Logger
 
 object UserActorProtocol {
   case class CreateUser(username: String, email: String)
@@ -67,14 +68,20 @@ object Protocol {
 
   def createUserIteratee(user: User): Iteratee[JsValue, _] =
     Iteratee.foreach[JsValue] { event =>
-      println("Event:" + event)
+      Logger.info(s"recieved event: $event")
       (event \ "kind").as[String] match { // handle the general events
-        case "join" => 
+        case "join" =>
           roomManager ! JoinRoom((event \ "object" \ "room").as[String], user)
         case "createRoom" =>
           roomManager ! CreateRoom((event \ "object" \ "roomname").as[String], user)
-        case "getRoomList" =>
-          roomManager ! SendMembersList((event \ "object" \ "roomname").as[String], user)
+        case "getRoomList" => {
+        	roomManager ! SendMembersList((event \ "object" \ "roomname").as[String], user)
+        }
+        case "sendMessage" => {
+          val room = (event \ "object" \ "room").as[String]
+          val body = (event \ "object" \ "body").as[String]
+          roomManager ! Talk(user, room, body)
+        }
       }
     }.mapDone { _ =>
         user.actor ! KickUser(user.username)

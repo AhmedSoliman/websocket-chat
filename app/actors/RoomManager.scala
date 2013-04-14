@@ -62,6 +62,7 @@ class RoomActor(name: String, owner: User) extends Actor with ActorLogging {
       if (members contains user) {
         user.actor ! UserAlreadyInRoom(name)
       } else {
+        members += user
         sendToAll(UserActorProtocol.NotifyRoomJoin(name, user, true)) //notify everybody
         user.actor ! RoomMembersList(name, members) //return user list
       }

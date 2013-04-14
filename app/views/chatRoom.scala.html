@@ -1,9 +1,9 @@
-@(room: String, username: String)(implicit request: RequestHeader)
+@(username: String)(implicit request: RequestHeader)
 
-@main(Some(room), Some(username)) {
+@main(Some("Lobby"), Some(username)) {
     
     <div class="page-header">
-        <h1>Welcome to the chat room <strong class="room-name">@room</strong> <small>You are chatting as @username</small></h1>
+        <h1>Welcome to the chat room <strong class="room-name">Lobby</strong> <small>You are chatting as @username</small></h1>
         <form><label>create room: </label><input type="text", id="create-room"/></form>
     </div>
     

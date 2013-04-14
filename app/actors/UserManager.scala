@@ -25,6 +25,7 @@ class UserManager extends Actor with ActorLogging {
 
   def receive = {
     case CreateUser(username, email) =>
+      Logger.info(s"Create or get user, username: $username, email: $email")
       val user = if (onlineUsers contains username) {
         onlineUsers(username)
       } else {
@@ -37,7 +38,7 @@ class UserManager extends Actor with ActorLogging {
       val iteratee = Protocol.createUserIteratee(user)
       //return enumerator from the user actor
       val tender = sender
-      (user.actor ? Connect).map { 
+      (user.actor ? Connect).map {
         case Connected(enumerator) =>
           val s = UserWSPair(iteratee, enumerator)
           tender ! s
@@ -68,8 +69,10 @@ class UserActor(username: String) extends Actor with ActorLogging {
       
     case message: SendRoomMessage => 
       channel.push(Protocol.formatRoomMessage(message))
-    case message: RoomActorProtocol.RoomMembersList =>
-      channel.push(Protocol.formatRoomMembersList(message))
+    case message: RoomActorProtocol.RoomMembersList => {
+    	Logger.info("getRoomList")
+    	channel.push(Protocol.formatRoomMembersList(message))
+    }
     case KickUser(_) =>
       //broadcast to all rooms (actors) to kick this user out
       channel.push(Protocol.formatKickMessage(username))

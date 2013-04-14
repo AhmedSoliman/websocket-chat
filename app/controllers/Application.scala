@@ -38,7 +38,8 @@ object Application extends Controller {
         "username" -> text,
         "email" -> text))
     val (username, email) = loginForm.bindFromRequest.get
-    Created.withSession("username" -> username, "email" -> email)
+//    Created.withSession("username" -> username, "email" -> email)
+    Redirect(routes.Application.chatRoom).withSession("username" -> username, "email" -> email)
   }
 
   def logout = Action { implicit request =>
@@ -49,15 +50,11 @@ object Application extends Controller {
   /**
    * Display the chat room page.
    */
-  def chatRoom(room: Option[String]) = Action { implicit request =>
+  def chatRoom() = Action { implicit request =>
     val username = session.get("username")
+    Logger.info(s"chat room with username $username")
     username.filterNot(_.isEmpty).map { username =>
-      room.filterNot(_.isEmpty).map { room =>
-        Ok(views.html.chatRoom(room, username))
-      }.getOrElse {
-        Redirect(routes.Application.index).flashing(
-          "error" -> "Please choose a room name.")
-      }
+      Ok(views.html.chatRoom(username))
     }.getOrElse {
       Redirect(routes.Application.index).flashing(
         "error" -> "Please choose a valid username.")
@@ -75,11 +72,12 @@ object Application extends Controller {
         (userManager ? CreateUser(username, request.session("email"))).map {
           case UserActorProtocol.UserWSPair(in, out) =>
             (in, out)
-          case e => 
+          case e =>
             throw new Exception("WTF!")
         }
 
       }.getOrElse {
+        Logger.info("Anonymous access to websocket")
         val in = Done[JsValue, Unit]((), Input.EOF)
         // Send an error and close the socket
         val errOut = Enumerator[JsValue](JsObject(Seq("error" -> JsString("Forbidden, you are not logged in")))).andThen(Enumerator.enumInput(Input.EOF))
