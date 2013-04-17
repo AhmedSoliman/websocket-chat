@@ -1,35 +1,87 @@
-@(username: String)(implicit request: RequestHeader)
+@()(implicit request: RequestHeader, flash: Flash)
 
-@main(Some("Lobby"), Some(username)) {
-    
-    <div class="page-header">
-        <h1>Welcome to the chat room <strong class="room-name">Lobby</strong> <small>You are chatting as @username</small></h1>
-        <form><label>create room: </label><input type="text", id="create-room"/></form>
-    </div>
-    
-    <div id="onError" class="alert-message error">
-        <p>
-            <strong>Oops!</strong> <span></span>
-        </p>
-    </div>
-    
-    <div id="onChat" class="row">
-        <div class="span10" id="main">
-            <div id="messages">
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title>WebSocket Chat - Lobby</title>
+        <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/bootstrap.css")">
+        <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/main.css")">
+        <link rel="shortcut icon" type="image/png" href="@routes.Assets.at("images/favicon.png")">
+        <script src="@routes.Assets.at("javascripts/jquery-1.7.1.min.js")" type="text/javascript"></script>
+    </head>
+    <body>
+    @flash.get("error").map { errorMessage =>
+        <div class="alert-message error">
+            <p>
+                <strong>Oops!</strong> @errorMessage
+            </p>
+        </div>
+    }
+        <div class="topbar">
+            <div class="fill">
+                <div class="container">
+                    <a class="brand" href="@routes.Application.index()">Websocket Chat-Room</a>
+                        <p class="pull-right">
+                            Logged in as Anonymous
+                            <a href="@routes.Application.index()">Disconnect</a>
+                        </p>
+                </div>
             </div>
-            <textarea id="talk"></textarea>
         </div>
-        <div class="span4">
-            <h2><a id="get-room-members" href="refresh">Members</a></h2>
-            <ul id="members">
-            </ul>
-        </div>
-        <div class="span4">
-            <h2><a id="get-room-list" href="refresh">Rooms</a></h2>
-            <ul id="rooms">
-            </ul>
-        </div>
+    <div>
+        <p>
+            <strong>This is the Play 2.0 Websocket sample application!</strong> 
+            To start, choose a username and sign in using the top right form.
+        </p>
+
+        <form id="login-form" method="POST" action="@routes.Application.login" class="form-horizontal">
+            <fieldset>
+                <legend>Join a Chat Room</legend>
+                <label>Username</label>
+                <input id="username" name="username" type="text" placeholder="Username" />
+                <input id="email" name="email" type="text" placeholder="email" />
+                <button class="btn" type="submit">Sign in</button>
+            </fieldset>
+        </form>
     </div>
+        <div class="container">
+            <div class="content">
+               <div class="page-header">
+                 <h1>Welcome to the chat room <strong class="room-name">Lobby</strong> <small>You are chatting as Anonymous</small></h1>
+                 <form><label>create room: </label><input type="text", id="create-room"/></form>
+               </div>
+               <div id="onError" class="alert-message error">
+                 <p>
+                   <strong>Oops!</strong> <span></span>
+                 </p>
+               </div>
+               <div id="onChat" class="row">
+                 <div class="span10" id="main">
+                     <div id="messages">
+                     </div>
+                     <textarea id="talk"></textarea>
+                 </div>
+               <div class="span4">
+                   <h2><a id="get-room-members" href="refresh">Members</a></h2>
+                   <ul id="members">
+                   </ul>
+               </div>
+              <div class="span4">
+                 <h2><a id="get-room-list" href="refresh">Rooms</a></h2>
+                 <ul id="rooms">
+                 </ul>
+              </div>
+             </div>
+            </div>
+
+            <footer>
+                <p>
+                    <a href="http://www.playframework.org">www.playframework.org</a>
+                </p>
+            </footer>
+
+        </div>
+    </body>
     <script type="text/javascript" src="@routes.Assets.at("javascript/chat.js")"></script>
-    
-}
+</html>

@@ -26,9 +26,7 @@ object Application extends Controller {
   /**
    * Just display the home page.
    */
-  def index = Action { implicit request =>
-    Ok(views.html.index())
-  }
+  def index = chatRoom
 
   def login = Action { implicit request =>
     //TODO: validation
@@ -38,8 +36,7 @@ object Application extends Controller {
         "username" -> text,
         "email" -> text))
     val (username, email) = loginForm.bindFromRequest.get
-//    Created.withSession("username" -> username, "email" -> email)
-    Redirect(routes.Application.chatRoom).withSession("username" -> username, "email" -> email)
+    Created.withSession("username" -> username, "email" -> email)
   }
 
   def logout = Action { implicit request =>
@@ -53,12 +50,7 @@ object Application extends Controller {
   def chatRoom() = Action { implicit request =>
     val username = session.get("username")
     Logger.info(s"chat room with username $username")
-    username.filterNot(_.isEmpty).map { username =>
-      Ok(views.html.chatRoom(username))
-    }.getOrElse {
-      Redirect(routes.Application.index).flashing(
-        "error" -> "Please choose a valid username.")
-    }
+    Ok(views.html.chatRoom())
   }
 
   /**

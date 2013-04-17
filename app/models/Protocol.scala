@@ -42,13 +42,19 @@ object Protocol {
   lazy val roomManager: ActorRef = Akka.system.actorFor("akka://application/user/rooms")
   lazy val userManager: ActorRef = Akka.system.actorFor("akka://application/user/users")
 
-  def formatRoomMembersList(message: RoomMembersList): JsValue = 
+  def formatRoomList(message: RoomsList): JsValue =
     Json.obj(
-        "kind" -> "roomMembers",
-        "object" -> Json.obj(
-            "roomname" -> message.room,
-            "roomList" -> message.members.map(u => Json.obj("username" -> u.username, "email" -> u.email))))
-            
+      "kind" -> "roomList",
+      "object" -> Json.obj(
+        "roomList" -> JsArray(message.rooms.map(room => JsString(room.name)))))
+
+  def formatRoomMembersList(message: RoomMembersList): JsValue =
+    Json.obj(
+      "kind" -> "roomMembers",
+      "object" -> Json.obj(
+        "roomname" -> message.room,
+        "roomList" -> message.members.map(u => Json.obj("username" -> u.username, "email" -> u.email))))
+
   def formatJoinMessage(message: NotifyRoomJoin): JsValue =
     Json.obj(
       "kind" -> (if (message.isJoining) "notifyJoin" else "notifyLeave"),
@@ -69,13 +75,17 @@ object Protocol {
   def createUserIteratee(user: User): Iteratee[JsValue, _] =
     Iteratee.foreach[JsValue] { event =>
       Logger.info(s"recieved event: $event")
-      (event \ "kind").as[String] match { // handle the general events
+      (event \ "kind").as[String] match {
         case "join" =>
           roomManager ! JoinRoom((event \ "object" \ "room").as[String], user)
         case "createRoom" =>
           roomManager ! CreateRoom((event \ "object" \ "roomname").as[String], user)
+        case "getRoomMembers" => {
+          Logger.info(s"getting room members, roomname: ${(event \ "object" \ "roomname").as[String]}")
+          roomManager ! SendMembersList((event \ "object" \ "roomname").as[String], user)
+        }
         case "getRoomList" => {
-        	roomManager ! SendMembersList((event \ "object" \ "roomname").as[String], user)
+          roomManager ! SendRoomsList(user)
         }
         case "sendMessage" => {
           val room = (event \ "object" \ "room").as[String]
@@ -84,7 +94,7 @@ object Protocol {
         }
       }
     }.mapDone { _ =>
-        user.actor ! KickUser(user.username)
-        //TODO: leave all rooms I joined
+      user.actor ! KickUser(user.username)
+      //TODO: leave all rooms I joined
     }
 }

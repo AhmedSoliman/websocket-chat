@@ -71,7 +71,11 @@ class UserActor(username: String) extends Actor with ActorLogging {
       channel.push(Protocol.formatRoomMessage(message))
     case message: RoomActorProtocol.RoomMembersList => {
     	Logger.info("getRoomList")
-    	channel.push(Protocol.formatRoomMembersList(message))
+    	channel push Protocol.formatRoomMembersList(message)
+    }
+    case message: RoomActorProtocol.RoomsList => {
+      Logger.info(s"Sending room list: ${message.rooms} to user: $username")
+      channel push Protocol.formatRoomList(message)
     }
     case KickUser(_) =>
       //broadcast to all rooms (actors) to kick this user out

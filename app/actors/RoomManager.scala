@@ -44,12 +44,17 @@ class RoomManager extends Actor with ActorLogging {
       } else {
         sender ! NoSuchRoom
       }
+    case SendRoomsList(user) => user.actor ! RoomsList(rooms.foldLeft(Seq[Room]())((rooms, room) => rooms :+ room._2))
+    case e @ SendMembersList(roomname, user) => rooms.get(roomname) match {
+      case Some(room) => room.actor ! e
+      case None => Logger.info(s"room name is not valid, roomname: $roomname, rooms: $rooms")
+    }
   }
 }
 
 class RoomActor(name: String, owner: User) extends Actor with ActorLogging {
   log.info("RoomActor Started:" + this.self.path)
-  
+
   private[this] implicit val timeout = Timeout(1 seconds)
   private[this] var members: Set[User] = Set(owner)
 
@@ -66,9 +71,11 @@ class RoomActor(name: String, owner: User) extends Actor with ActorLogging {
         sendToAll(UserActorProtocol.NotifyRoomJoin(name, user, true)) //notify everybody
         user.actor ! RoomMembersList(name, members) //return user list
       }
-    case SendMembersList(_, user) => user.actor ! RoomMembersList(name, members)
+    case SendMembersList(_, user) => {
+      user.actor ! RoomMembersList(name, members)
+    }
     case Talk(who, _, body) =>
-    	sendToAll(UserActorProtocol.SendRoomMessage(who, name, body))
-    case SendMembersList(room, user) => ???
+      sendToAll(UserActorProtocol.SendRoomMessage(who, name, body))
+//    case SendMembersList(room, user) => ???
   }
 }
